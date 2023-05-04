@@ -17,6 +17,10 @@ public class UserProfileService {
         this.userProfileDao = userProfileDao;
     }
 
+    public UserProfileDao getUserProfileDao() {
+        return userProfileDao;
+    }
+
     public UserProfile get(UserId userId) {
         return userProfileDao.get(userId).orElseThrow(EntityNotFoundException::new);
     }
