@@ -60,7 +60,7 @@ public class CollectCommand implements UserProfiles {
                         List<UserProfilePropertyValue> newList = new ArrayList<>();
                         newList.add(currentValue);
                         newList.add(propertyValue);
-                        userProfile.userProfileProperties().put(propertyName, (UserProfilePropertyValue) newList);
+                        userProfile.userProfileProperties().put(propertyName, new UserProfilePropertyValue(newList));
                         userProfileDao.put(userProfile);
                     }
                 }
@@ -68,7 +68,8 @@ public class CollectCommand implements UserProfiles {
             userProfileDao.put(userProfile);
             return Response.ok(userProfile).build();
         } catch (Exception e) {
-            throw new EntityNotFoundException();
+            log.error("Problem in collect Command in execution.Reason:", e);
         }
+        return Response.status(Response.Status.BAD_REQUEST).build();
     }
 }

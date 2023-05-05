@@ -11,4 +11,5 @@ public class CreateProfile {
         Instant instant = Instant.now();
         return new UserProfile(command.getUserId(), instant, command.getProperties());
     }
+
 }

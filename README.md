@@ -140,3 +140,54 @@ java -jar ./build/libs/userprofile-api-1.0.0-SNAPSHOT.jar server
 ```shell
 curl http://localhost:8080/users/some-user-id/profile
 ```
+
+### How to make a request to a running application for single userprofile type
+
+```POSTMAN/ARC
+POST http://localhost:8080/user/single-profile
+```
+```json
+  {
+    "userId": "de4310e5-b139-441a-99db-77c9c4a5fada",
+    "type": "collect",
+    "properties": {
+      "inventory": ["sword1", "sword2", "shield1"],
+      "tools": ["tool1", "tool2"]
+    }
+  }
+  ```
+Likewise for other type (currently it supports type: collect,increment and replace but more functions can be easily exteneded in the  code)
+
+````
+For bulk upload:(use POSTMAN/ARC or curl)
+
+POST  http://localhost:8080/user/bulk-profile
+````
+```json
+[
+{
+  "userId": "de4310e5-b139-441a-99db-77c9c4a5fada",
+  "type": "replace",
+  "properties": {
+    "currentGold": 500,
+    "currentGems": 800
+  }
+},
+  {
+  "userId": "de4310e5-b139-441a-99db-77c9c4a5fada",
+  "type": "increment",
+  "properties": {
+    "battleFought": 10,
+    "questsNotCompleted": -1
+  }
+},
+  {
+  "userId": "de4310e5-b139-441a-99db-77c9c4a5fada",
+  "type": "collect",
+  "properties": {
+    "inventory": ["sword1", "sword2", "shield1"],
+    "tools": ["tool1", "tool2"]
+  }
+}
+]
+```

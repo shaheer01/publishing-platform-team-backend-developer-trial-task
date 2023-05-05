@@ -17,10 +17,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 @Path("/user")
 @Consumes(MediaType.APPLICATION_JSON)
@@ -44,80 +41,111 @@ public class UserProfileCreation {
         this.collectCommand = new CollectCommand(userProfileService.getUserProfileDao());
     }
 
-    @POST
-    @Path("/{userId}")
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response putUserProfile(@PathParam ("userId") String userId, String requestBody)  throws JsonProcessingException {
-        try {
-        UserId userID = new UserId(userId);
-        Instant instant = Instant.now();
-        userProfileProperties.put(new UserProfilePropertyName("userId"), new UserProfilePropertyValue(userId));
-        if (!requestBody.equals("")) {
-            userProfileProperties = new ObjectMapper().readValue(requestBody, new TypeReference<Map<UserProfilePropertyName, UserProfilePropertyValue>>() {
-            });
-        }
-            UserProfile userProfile = new UserProfile(userID, instant, userProfileProperties);
-            return Response.ok(userProfileService.put(userProfile)).build();
-        } catch (Exception ex) {
-            log.error("Error in parsing the json", ex);
-            return Response.status(400).build();
-        }
-    }
-
-    @POST
-    @Path("/single-profile")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response updateUserProfile(String requestBody) {
-        try {
-            if (!Objects.equals(requestBody, "")) {
-                Command command = new ObjectMapper().readValue(requestBody, Command.class);
-                //Calling different types of command.
-                return userProfileProcess(command);
-            } else {
-                //Optional: Provision for a new User-profile to be created without any command type.
-                UserProfile userProfile = createUserProfile(requestBody);
-                return Response.ok(userProfileService.put(userProfile)).build();
-            }
-
-            } catch (JsonProcessingException| RuntimeException ex) {
-//            throw new RuntimeException(ex);
-            log.error("Json parsing error ", ex);
-        }
-        return Response.status(400).build();
-    }
-
-    private Response userProfileProcess(Command command) {
-        boolean output = false;
-        //Check if User Profile already created for the userId.
-        if (command.getUserId() != null) {
-
-            switch (command.getType()) {
-                case replace:
-                    //function to replace
-                    return replaceCommand.execute(command);
-                case increment:
-                    //function to increment
-                    return incrementCommand.execute(command);
-                case collect:
-                    //function to collect
-                    return collectCommand.execute(command);
-                default:
-                    //default type would just print the result
-                    return Response.status(400).build();
-            }
-        } else {
-            log.error("Missing UserId {}", command);
-            return Response.status(400).build();
-        }
-    }
-
-    private UserProfile createUserProfile (String requestBody) throws JsonProcessingException {
-        Instant instant = Instant.now();
-        UserId userID = new UserId(UUID.randomUUID().toString());
+@POST
+@Path("/{userId}")
+@Consumes(MediaType.APPLICATION_JSON)
+public Response putUserProfile(@PathParam ("userId") String userId, String requestBody)  throws JsonProcessingException {
+    try {
+    UserId userID = new UserId(userId);
+    Instant instant = Instant.now();
+    userProfileProperties.put(new UserProfilePropertyName("userId"), new UserProfilePropertyValue(userId));
+    if (!requestBody.equals("")) {
         userProfileProperties = new ObjectMapper().readValue(requestBody, new TypeReference<Map<UserProfilePropertyName, UserProfilePropertyValue>>() {
         });
-        return new UserProfile(userID, instant, userProfileProperties);
     }
+        UserProfile userProfile = new UserProfile(userID, instant, userProfileProperties);
+        return Response.ok(userProfileService.put(userProfile)).build();
+    } catch (Exception ex) {
+        log.error("Error in parsing the json", ex);
+        return Response.status(400).build();
+    }
+}
+
+@POST
+@Path("/single-profile")
+@Consumes(MediaType.APPLICATION_JSON)
+@Produces(MediaType.APPLICATION_JSON)
+public Response updateUserProfile(String requestBody) {
+    try {
+        if (!Objects.equals(requestBody, "")) {
+            Command command = new ObjectMapper().readValue(requestBody, Command.class);
+            //Calling different types of command.
+            return userProfileProcess(command);
+        } else {
+            //Optional: Provision for a new User-profile to be created without any command type.
+            UserProfile userProfile = createUserProfile(requestBody);
+            return Response.ok(userProfileService.put(userProfile)).build();
+        }
+
+        } catch (JsonProcessingException| RuntimeException ex) {
+//            throw new RuntimeException(ex);
+        log.error("Json parsing error ", ex);
+    }
+    return Response.status(400).build();
+}
+
+@POST
+@Path("/bulk-profile")
+@Consumes(MediaType.APPLICATION_JSON)
+@Produces(MediaType.APPLICATION_JSON)
+public Response updateBulkUserProfile(String requestBody) {
+    try {
+        if (!Objects.equals(requestBody, "")) {
+            List<Command> commands = new ObjectMapper().readValue(requestBody, new TypeReference<List<Command>>() {});
+            List<Integer> output = new ArrayList<Integer>(3);
+            //Iterating for bulk upload
+            for (Command command : commands) {
+                //Calling different types of command.
+                output.add(userProfileProcess(command).getStatus());
+            }
+            return Response.ok(output).build();
+        } else {
+            //Optional: Provision for a new User-profile to be created without any command type.
+            log.info("User Profile not available hence creating a new Profile {}", requestBody);
+            UserProfile userProfile = createUserProfile(requestBody);
+            return Response.ok(userProfileService.put(userProfile)).build();
+        }
+
+
+    } catch (JsonProcessingException| RuntimeException ex) {
+//            throw new RuntimeException(ex);
+        log.error("Json parsing error ", ex);
+    }
+    return Response.status(400).build();
+}
+
+private Response userProfileProcess(Command command) {
+    boolean output = false;
+    //Check if User Profile already created for the userId.
+    if (command.getUserId() != null) {
+
+        switch (command.getType()) {
+            case replace:
+                //function to replace
+                return replaceCommand.execute(command);
+            case increment:
+                //function to increment
+                return incrementCommand.execute(command);
+            case collect:
+                //function to collect
+                return collectCommand.execute(command);
+            default:
+                //default type would just print the result
+                log.error("Unsupported command type: {}", command.getType());
+                return Response.status(400).build();
+        }
+    } else {
+        log.error("Missing UserId {}", command);
+        return Response.status(400).build();
+    }
+}
+
+private UserProfile createUserProfile (String requestBody) throws JsonProcessingException {
+    Instant instant = Instant.now();
+    UserId userID = new UserId(UUID.randomUUID().toString());
+    userProfileProperties = new ObjectMapper().readValue(requestBody, new TypeReference<Map<UserProfilePropertyName, UserProfilePropertyValue>>() {
+    });
+    return new UserProfile(userID, instant, userProfileProperties);
+}
 }
 
