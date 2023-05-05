@@ -3,6 +3,7 @@ package com.spotlight.platform.userprofile.api.web.resources;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.spotlight.platform.userprofile.api.core.profile.CollectCommand;
 import com.spotlight.platform.userprofile.api.core.profile.IncrementCommand;
 import com.spotlight.platform.userprofile.api.core.profile.ReplaceCommand;
 import com.spotlight.platform.userprofile.api.core.profile.UserProfileService;
@@ -30,16 +31,18 @@ public class UserProfileCreation {
     private final UserProfileService userProfileService;
     Map<UserProfilePropertyName, UserProfilePropertyValue> userProfileProperties = new HashMap<>();
 
+    private final ReplaceCommand replaceCommand;
+
+    private final IncrementCommand incrementCommand;
+    private final CollectCommand collectCommand;
+
     @Inject
     public UserProfileCreation(UserProfileService userProfileService) {
         this.userProfileService = userProfileService;
         this.replaceCommand = new ReplaceCommand(userProfileService.getUserProfileDao());
         this.incrementCommand = new IncrementCommand(userProfileService.getUserProfileDao());
+        this.collectCommand = new CollectCommand(userProfileService.getUserProfileDao());
     }
-
-    private ReplaceCommand replaceCommand;
-
-    private IncrementCommand incrementCommand;
 
     @POST
     @Path("/{userId}")
@@ -48,8 +51,6 @@ public class UserProfileCreation {
         try {
         UserId userID = new UserId(userId);
         Instant instant = Instant.now();
-        String uuid = UUID.randomUUID().toString();
-        userProfileProperties.put(new UserProfilePropertyName("User Unique Id"), new UserProfilePropertyValue(uuid));
         userProfileProperties.put(new UserProfilePropertyName("userId"), new UserProfilePropertyValue(userId));
         if (!requestBody.equals("")) {
             userProfileProperties = new ObjectMapper().readValue(requestBody, new TypeReference<Map<UserProfilePropertyName, UserProfilePropertyValue>>() {
@@ -70,10 +71,11 @@ public class UserProfileCreation {
     public Response updateUserProfile(String requestBody) {
         try {
             if (!Objects.equals(requestBody, "")) {
-
                 Command command = new ObjectMapper().readValue(requestBody, Command.class);
+                //Calling different types of command.
                 return userProfileProcess(command);
             } else {
+                //Optional: Provision for a new User-profile to be created without any command type.
                 UserProfile userProfile = createUserProfile(requestBody);
                 return Response.ok(userProfileService.put(userProfile)).build();
             }
@@ -99,14 +101,15 @@ public class UserProfileCreation {
                     return incrementCommand.execute(command);
                 case collect:
                     //function to collect
+                    return collectCommand.execute(command);
                 default:
                     //default type would just print the result
+                    return Response.status(400).build();
             }
         } else {
             log.error("Missing UserId {}", command);
             return Response.status(400).build();
         }
-        return Response.ok(output).build();
     }
 
     private UserProfile createUserProfile (String requestBody) throws JsonProcessingException {
@@ -114,8 +117,7 @@ public class UserProfileCreation {
         UserId userID = new UserId(UUID.randomUUID().toString());
         userProfileProperties = new ObjectMapper().readValue(requestBody, new TypeReference<Map<UserProfilePropertyName, UserProfilePropertyValue>>() {
         });
-        UserProfile userProfile = new UserProfile(userID, instant, userProfileProperties);
-        return userProfile;
+        return new UserProfile(userID, instant, userProfileProperties);
     }
 }
 

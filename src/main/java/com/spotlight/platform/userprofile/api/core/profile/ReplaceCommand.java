@@ -1,5 +1,6 @@
 package com.spotlight.platform.userprofile.api.core.profile;
 
+import com.spotlight.platform.userprofile.api.core.Utility.CreateProfile;
 import com.spotlight.platform.userprofile.api.core.exceptions.EntityNotFoundException;
 import com.spotlight.platform.userprofile.api.core.profile.persistence.UserProfileDao;
 import com.spotlight.platform.userprofile.api.model.profile.UserProfile;
@@ -8,7 +9,6 @@ import com.spotlight.platform.userprofile.api.model.profile.primitives.UserProfi
 import com.spotlight.platform.userprofile.api.model.profile.primitives.UserProfilePropertyValue;
 import lombok.Getter;
 import lombok.Setter;
-import org.apache.commons.collections4.CollectionUtils;
 
 import javax.inject.Inject;
 import javax.ws.rs.core.Response;
@@ -35,8 +35,7 @@ public class ReplaceCommand implements UserProfiles {
             UserProfile userProfile = userProfileDao.get(command.getUserId()).orElse(new UserProfile(null, null, null));
             if (userProfile.userProfileProperties() == null) {
                 // The userProfile object is null or empty
-                Instant instant = Instant.now();
-                userProfile = new UserProfile(command.getUserId(), instant, command.getProperties());
+                userProfile = CreateProfile.createUserProfileForNewUser(command);
                 userProfileDao.put(userProfile);
             } else {
                 properties = command.getProperties();
